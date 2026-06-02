@@ -9,15 +9,12 @@ folders listed in REQUIRED_FOLDERS. Dry-run mode is the default.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import sys
 from dataclasses import dataclass
 from typing import Any
-from urllib.error import HTTPError, URLError
 from urllib.parse import unquote, urlparse
-from urllib.request import Request, urlopen
 
 CALLER_NAME = "project-setup-automation"
 REQUIRED_FOLDERS = [
@@ -114,47 +111,45 @@ def webhook_request(
     project_folder_id: str,
     folder_name: str,
 ) -> dict[str, Any]:
+    import requests
+
     payload = {
+        "api_key": api_key,
         "action": "create-folder",
         "caller": CALLER_NAME,
         "parent_folder_id": project_folder_id,
         "folder_name": folder_name,
     }
-    body = json.dumps(payload).encode("utf-8")
-    request = Request(
-        webhook_url,
-        data=body,
-        method="POST",
-        headers={
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "X-API-Key": api_key,
-        },
-    )
 
     try:
-        with urlopen(request, timeout=30) as response:
-            response_body = response.read().decode("utf-8")
-            if not response_body.strip():
-                return {"ok": True, "status": "created", "message": "Webhook returned an empty success response."}
-            try:
-                data = json.loads(response_body)
-            except json.JSONDecodeError as exc:
-                raise ScriptError(
-                    f"Webhook returned non-JSON response for '{folder_name}': {response_body}"
-                ) from exc
-            if not isinstance(data, dict):
-                raise ScriptError(f"Webhook returned unexpected JSON for '{folder_name}': {data!r}")
-            return data
-    except HTTPError as exc:
-        response_body = exc.read().decode("utf-8", errors="replace")
-        raise ScriptError(
-            f"Webhook HTTP failure for '{folder_name}' ({exc.code} {exc.reason}): {response_body}"
-        ) from exc
-    except URLError as exc:
-        raise ScriptError(f"Webhook connection failure for '{folder_name}': {exc.reason}") from exc
-    except TimeoutError as exc:
+        resp = requests.post(
+            webhook_url,
+            json=payload,
+            allow_redirects=True,
+            timeout=30,
+        )
+    except requests.Timeout as exc:
         raise ScriptError(f"Webhook timed out for '{folder_name}'.") from exc
+    except requests.RequestException as exc:
+        raise ScriptError(f"Webhook connection failure for '{folder_name}': {exc}") from exc
+
+    if not resp.ok:
+        raise ScriptError(
+            f"Webhook HTTP failure for '{folder_name}' "
+            f"({resp.status_code} {resp.reason}): {resp.text}"
+        )
+
+    try:
+        data = resp.json()
+    except ValueError as exc:
+        raise ScriptError(
+            f"Webhook returned non-JSON response for '{folder_name}': {resp.text}"
+        ) from exc
+
+    if not isinstance(data, dict):
+        raise ScriptError(f"Webhook returned unexpected JSON for '{folder_name}': {data!r}")
+
+    return data
 
 
 def normalize_webhook_result(folder_name: str, data: dict[str, Any]) -> FolderResult:
