@@ -2,6 +2,16 @@
 
 Utilities for setting up the required Google Drive folder structure for one exact project folder.
 
+
+## Run from GitHub Actions
+
+1. Go to the **Actions** tab in GitHub.
+2. Choose **Project Setup Folders**.
+3. Click **Run workflow**.
+4. Paste the exact Google Drive project folder URL into `project_folder_url`.
+5. Run first with `apply=false` to review the dry-run output.
+6. If the dry-run output is correct, run again with `apply=true`.
+
 ## Create project setup folders
 
 The first script creates or reuses only these three folders inside the Google Drive project folder identified by the exact folder URL or folder ID you provide:
