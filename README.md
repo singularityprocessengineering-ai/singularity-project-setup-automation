@@ -12,6 +12,10 @@ Utilities for setting up the required Google Drive folder structure for one exac
 5. Run first with `apply=false` to review the dry-run output.
 6. If the dry-run output is correct, run again with `apply=true`.
 
+## Drive webhook setup
+
+Deploy the Google Apps Script webhook in `apps-script/Code.gs`, configure the `DRIVE_WEBHOOK_API_KEY` Script Property, then save the Web App URL and matching API key in GitHub Secrets as `DRIVE_WEBHOOK_URL` and `DRIVE_WEBHOOK_API_KEY`. See `apps-script/README.md` for the full deployment steps.
+
 ## Create project setup folders
 
 The first script creates or reuses only these three folders inside the Google Drive project folder identified by the exact folder URL or folder ID you provide:
