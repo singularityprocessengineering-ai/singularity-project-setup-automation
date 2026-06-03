@@ -1,0 +1,42 @@
+name: Project Setup Folders
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_folder_url:
+        description: Exact Google Drive project folder URL or folder ID
+        required: true
+        type: string
+      apply:
+        description: Apply changes by calling the Drive webhook
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  project-setup-folders:
+    name: Project setup folders
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run project setup folders script
+        env:
+          DRIVE_WEBHOOK_URL: ${{ secrets.DRIVE_WEBHOOK_URL }}
+          DRIVE_WEBHOOK_API_KEY: ${{ secrets.DRIVE_WEBHOOK_API_KEY }}
+        run: |
+          args=(--project-folder-url "${{ inputs.project_folder_url }}")
+          if [[ "${{ inputs.apply }}" == "true" ]]; then
+            args+=(--apply)
+          fi
+          python scripts/create_project_setup_folders.py "${args[@]}"
